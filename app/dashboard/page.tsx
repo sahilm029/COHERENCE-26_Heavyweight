@@ -257,12 +257,16 @@ export default function DashboardPage() {
   const onNodeMouseDown = (e: React.MouseEvent, id: number) => {
     e.preventDefault();
     const node = nodes.find(n => n.id === id)!;
-    draggingNode.current = { id, startX: e.clientX, startY: e.clientY, origX: node.x, origY: node.y };
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const origX = node.x;
+    const origY = node.y;
+    draggingNode.current = { id, startX, startY, origX, origY };
     const onMove = (ev: MouseEvent) => {
       if (!draggingNode.current) return;
-      const dx = ev.clientX - draggingNode.current.startX;
-      const dy = ev.clientY - draggingNode.current.startY;
-      setNodes(prev => prev.map(n => n.id === id ? { ...n, x: draggingNode.current!.origX + dx, y: draggingNode.current!.origY + dy } : n));
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      setNodes(prev => prev.map(n => n.id === id ? { ...n, x: origX + dx, y: origY + dy } : n));
     };
     const onUp = () => {
       draggingNode.current = null;
@@ -345,22 +349,105 @@ export default function DashboardPage() {
     try {
       const res = await fetch(`${API}/api/campaigns/1/launch`, { method: "POST" });
       if (!res.ok) throw new Error("Launch failed");
-      setExecLogs(prev => [...prev, { line: `[${new Date().toLocaleTimeString()}] ✅ Campaign launched`, color: "text-emerald-600" }]);
-      // Animate nodes lighting up
-      for (let i = 0; i < nodes.length; i++) {
-        await new Promise(r => setTimeout(r, 800));
-        const ts = new Date().toLocaleTimeString();
-        setExecLogs(prev => [...prev, { line: `[${ts}] ▸ ${nodes[i].label} — processing...`, color: "text-blue-600" }]);
-        setNodes(prev => prev.map((n, idx) => ({ ...n, active: idx <= i })));
-        if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
-      }
-      setExecLogs(prev => [...prev, { line: `[${new Date().toLocaleTimeString()}] 🎯 Pipeline complete — emails sent, monitoring active`, color: "text-emerald-600" }]);
-      // Redirect to monitoring after a beat
-      setTimeout(() => router.push("/monitoring"), 2000);
+      setExecLogs(prev => [...prev, { line: `[${new Date().toLocaleTimeString()}] ✅ Campaign launched — executing pipeline...`, color: "text-emerald-400" }]);
+
+      // Open SSE stream for real-time events
+      const es = new EventSource(`${API}/api/campaigns/1/stream`);
+      const eventIcons: Record<string, string> = {
+        trigger_started: "⚡",
+        blocklist_passed: "🛡️",
+        blocked: "🚫",
+        message_generated: "🤖",
+        delay_started: "⏳",
+        delay_completed: "⏰",
+        email_sent: "📧",
+        email_failed: "❌",
+        clawbot_triggered: "🦅",
+        condition_evaluated: "🔀",
+        lead_completed: "✅",
+        campaign_completed: "🎯",
+      };
+
+      es.addEventListener("campaign_event", (e: MessageEvent) => {
+        try {
+          const data = JSON.parse(e.data);
+          const icon = eventIcons[data.event_type] || "▸";
+          const ts = new Date().toLocaleTimeString();
+          const leadName = data.payload?.lead_name || `Lead #${data.lead_id}`;
+          const company = data.payload?.company ? ` (${data.payload.company})` : "";
+
+          let detail = "";
+          switch (data.event_type) {
+            case "trigger_started":
+              detail = `${leadName}${company} — entering pipeline`;
+              break;
+            case "blocked":
+              detail = `${leadName} — BLOCKED: ${data.payload?.reason || "competitor domain"}`;
+              break;
+            case "blocklist_passed":
+              detail = `${leadName} — cleared blocklist`;
+              break;
+            case "message_generated":
+              detail = `AI drafted for ${leadName}: "${data.payload?.subject || ""}"`;
+              if (data.payload?.hooks_used?.length) detail += ` [hooks: ${data.payload.hooks_used.join(", ")}]`;
+              break;
+            case "delay_started":
+              detail = `Jitter delay active...`;
+              break;
+            case "delay_completed":
+              detail = `Delay complete — resuming`;
+              break;
+            case "email_sent":
+              detail = `✉️ Sent to ${data.payload?.to || leadName}: "${data.payload?.subject || ""}"`;
+              break;
+            case "email_failed":
+              detail = `Failed to send to ${data.payload?.to || leadName}`;
+              break;
+            case "clawbot_triggered":
+              detail = `🔥 Hot lead: ${leadName}${company} — WhatsApp alert sent!`;
+              break;
+            case "condition_evaluated":
+              detail = `${leadName}: ${data.payload?.check} → ${data.payload?.result}`;
+              break;
+            case "lead_completed":
+              detail = `${leadName} — pipeline complete`;
+              break;
+            case "campaign_completed":
+              detail = `All leads processed — campaign complete!`;
+              // Redirect to monitoring
+              setTimeout(() => {
+                es.close();
+                router.push("/monitoring");
+              }, 2000);
+              break;
+            default:
+              detail = `${data.event_type}: ${JSON.stringify(data.payload || {}).slice(0, 80)}`;
+          }
+
+          const color = data.event_type === "blocked" || data.event_type === "email_failed"
+            ? "text-red-400"
+            : data.event_type === "email_sent" || data.event_type === "lead_completed" || data.event_type === "campaign_completed"
+              ? "text-emerald-400"
+              : data.event_type === "clawbot_triggered"
+                ? "text-amber-400"
+                : "text-blue-400";
+
+          setExecLogs(prev => [...prev, { line: `[${ts}] ${icon} ${detail}`, color }]);
+          if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+        } catch { /* ignore parse errors */ }
+      });
+
+      // Also handle generic messages
+      es.onmessage = () => { };
+      es.onerror = () => {
+        // SSE may close after campaign completes — that's fine
+        setIsLaunching(false);
+      };
+
     } catch {
-      setExecLogs(prev => [...prev, { line: `[${new Date().toLocaleTimeString()}] ❌ Launch failed`, color: "text-red-600" }]);
+      setExecLogs(prev => [...prev, { line: `[${new Date().toLocaleTimeString()}] ❌ Launch failed — check backend logs`, color: "text-red-400" }]);
+      setIsLaunching(false);
     }
-    setIsLaunching(false);
   };
 
   return (

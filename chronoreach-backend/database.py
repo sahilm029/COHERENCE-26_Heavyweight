@@ -2,9 +2,11 @@ import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import text
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+_env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(_env_path, override=True)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./chronoreach.db")
 
