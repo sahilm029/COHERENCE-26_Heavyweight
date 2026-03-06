@@ -170,11 +170,13 @@ class LLMService:
 
     # --- Email Generation ---
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8))
     async def generate_message(self, lead: dict, step: int,
                                persona_config: dict,
                                previous_reply: str = None) -> dict:
+        # Try Gemini first with a short timeout
         try:
+            import asyncio
+
             if "ghost_voice_prompt" in persona_config:
                 persona_block = persona_config["ghost_voice_prompt"]
             else:
@@ -209,40 +211,71 @@ Return JSON:
   "language": "en"
 }}"""
 
-            result = call_gemini_json(flash_model, prompt)
+            result = await asyncio.wait_for(
+                asyncio.to_thread(call_gemini_json, flash_model, prompt),
+                timeout=8.0
+            )
             result["word_count"] = len(result.get("body", "").split())
+            print(f"[LLM] ✅ Gemini generated unique email for {lead.get('first_name', '?')}")
             return result
-        except Exception:
-            fixture_key = lead.get("email", "default")
-            step_key = f"step_{step}"
-            fixture_result = FIXTURES.get(fixture_key, {}).get(step_key, None)
-            if fixture_result:
-                raw = fixture_result
-            else:
-                # Pick a unique template per lead based on email hash
-                idx = hash(lead.get("email", "")) % len(FALLBACK_TEMPLATES)
-                raw = FALLBACK_TEMPLATES[idx].copy()
-            # Substitute lead data into template strings
-            subs = {
-                "first_name": lead.get("first_name", "there"),
-                "last_name": lead.get("last_name", ""),
-                "company": lead.get("company", "your company"),
-                "title": lead.get("title", ""),
-                "insight": lead.get("insight", ""),
-                "linkedin_headline": lead.get("linkedin_headline", ""),
+        except Exception as e:
+            print(f"[LLM] ⚠️ Gemini failed for {lead.get('first_name', '?')}: {type(e).__name__}: {e}")
+
+        # --- Fallback: generate unique per-lead email from templates ---
+        first_name = lead.get("first_name", "there")
+        company = lead.get("company", "your company")
+        title = lead.get("title", "")
+        insight = lead.get("insight", "")
+
+        # Use hash of name+company to pick different template for each lead
+        lead_hash = hash(f"{first_name}{company}") % len(FALLBACK_TEMPLATES)
+        raw = FALLBACK_TEMPLATES[lead_hash].copy()
+
+        # If lead has real insight, inject it for personalization
+        if insight and insight.strip():
+            personalized_bodies = [
+                f"Hi {first_name}, saw that {company} recently {insight.lower() if not insight[0].isupper() else insight} — impressive moves. Had a quick thought on how teams in similar growth phases are streamlining outreach. Worth 10 minutes?",
+                f"Hi {first_name}, {insight} caught my eye. Teams scaling like {company} often hit a wall with manual outreach. We've helped similar companies save 8+ hours per week. Open to a quick chat?",
+                f"Hi {first_name}, with {company} {insight.lower() if not insight[0].isupper() else insight}, your team's probably busier than ever. Quick idea: what if your outreach ran on autopilot? Happy to show you how in 10 min.",
+                f"Hi {first_name}, noticed the {insight} news about {company}. When companies hit this velocity, outreach becomes the bottleneck. We solve exactly that. Worth a look?",
+                f"Hi {first_name}, congrats on {insight} at {company}. We help fast-growing teams like yours turn cold leads into warm conversations at scale. 15 min to show you how?",
+            ]
+            body = personalized_bodies[lead_hash]
+            subject_options = [
+                f"{first_name}, saw the news about {company}",
+                f"Quick thought after {company}'s update",
+                f"{company} + faster outreach?",
+                f"For {first_name} at {company}",
+                f"Re: {company}'s recent growth",
+            ]
+            subject = subject_options[lead_hash]
+            return {
+                "subject": subject,
+                "body": body,
+                "hooks_used": ["company", "insight"],
+                "word_count": len(body.split()),
+                "language": "en",
             }
-            if isinstance(raw, dict):
-                result = {}
-                for k, v in raw.items():
-                    if isinstance(v, str):
-                        try:
-                            result[k] = v.format_map(subs)
-                        except (KeyError, ValueError):
-                            result[k] = v
-                    else:
-                        result[k] = v
-                return result
-            return raw
+
+        # No insight: use template with substitution
+        subs = {
+            "first_name": first_name,
+            "last_name": lead.get("last_name", ""),
+            "company": company,
+            "title": title,
+            "insight": insight or "",
+            "linkedin_headline": lead.get("linkedin_headline", ""),
+        }
+        result = {}
+        for k, v in raw.items():
+            if isinstance(v, str):
+                try:
+                    result[k] = v.format_map(subs)
+                except (KeyError, ValueError):
+                    result[k] = v
+            else:
+                result[k] = v
+        return result
 
     # --- Hindi Email ---
 
