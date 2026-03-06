@@ -43,33 +43,19 @@ export default function Navbar() {
           className={`relative overflow-hidden rounded-2xl transition-all duration-500
             ${
               scrolled
-                ? "bg-white/8 shadow-[0_8px_32px_rgba(0,0,0,0.4)] border border-white/15"
-                : "bg-white/5 shadow-[0_4px_24px_rgba(0,0,0,0.2)] border border-white/12"
+                ? "shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-slate-200/80"
+                : "shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-slate-200/50"
             }
           `}
-          style={{ backdropFilter: "blur(20px) saturate(1.8)" }}
+          style={{
+            background: scrolled ? "rgba(255,255,255,0.82)" : "rgba(255,255,255,0.65)",
+            backdropFilter: "blur(20px) saturate(1.8)",
+          }}
         >
-          {/* Animated gradient border glow */}
-          <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-40">
-            <div
-              className="absolute -inset-px rounded-2xl"
-              style={{
-                background:
-                  "linear-gradient(135deg, rgba(139,92,246,0.3), rgba(59,130,246,0.2), rgba(236,72,153,0.3))",
-                mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                maskComposite: "exclude",
-                padding: "1px",
-              }}
-            />
-          </div>
-
-          {/* Subtle inner light reflection */}
+          {/* Subtle cyan shimmer top line */}
           <div
-            className="pointer-events-none absolute inset-0 rounded-2xl opacity-30"
-            style={{
-              background:
-                "radial-gradient(ellipse 60% 40% at 25% 0%, rgba(255,255,255,0.15), transparent)",
-            }}
+            className="pointer-events-none absolute inset-x-0 top-0 h-px opacity-60"
+            style={{ background: "linear-gradient(90deg, transparent, rgba(6,182,212,0.5), transparent)" }}
           />
 
           <div className="relative z-10 px-6 py-3.5 flex items-center justify-between">
@@ -77,10 +63,10 @@ export default function Navbar() {
             <Link href="/" className="group flex items-center gap-2.5">
               <div className="relative flex items-center justify-center w-9 h-9">
                 <div
-                  className="absolute inset-0 rounded-lg bg-linear-to-br from-violet-500 to-blue-500 opacity-80 group-hover:opacity-100 transition-opacity duration-300"
+                  className="absolute inset-0 rounded-lg bg-linear-to-br from-cyan-400 to-blue-500 opacity-80 group-hover:opacity-100 transition-opacity duration-300"
                   style={{ filter: "blur(0.5px)" }}
                 />
-                <div className="absolute inset-px rounded-[7px] bg-black/30 backdrop-blur-sm" />
+                <div className="absolute inset-px rounded-[7px] bg-white/30 backdrop-blur-sm" />
                 <svg
                   className="relative z-10 w-5 h-5 text-white transition-transform duration-300 group-hover:rotate-12"
                   viewBox="0 0 24 24"
@@ -96,7 +82,7 @@ export default function Navbar() {
                   <circle cx="12" cy="12" r="1.5" fill="currentColor" />
                 </svg>
               </div>
-              <span className="text-xl font-bold tracking-tight bg-linear-to-r from-white via-white to-white/70 bg-clip-text text-transparent transition-all duration-300 group-hover:to-violet-300">
+              <span className="text-xl font-bold tracking-tight bg-linear-to-r from-slate-900 via-slate-700 to-cyan-600 bg-clip-text text-transparent transition-all duration-300">
                 Synaptiq
               </span>
             </Link>
@@ -111,21 +97,21 @@ export default function Navbar() {
                   className={`relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300
                     ${
                       activeLink === href
-                        ? "text-white"
-                        : "text-white/60 hover:text-white/90"
+                        ? "text-slate-900"
+                        : "text-slate-600 hover:text-slate-900"
                     }
                   `}
                 >
                   {activeLink === href && (
                     <span
-                      className="absolute inset-0 rounded-xl bg-white/10 border border-white/8"
+                      className="absolute inset-0 rounded-xl bg-cyan-50 border border-cyan-200/60"
                       style={{
                         boxShadow:
-                          "inset 0 1px 1px rgba(255,255,255,0.06), 0 0 12px rgba(139,92,246,0.15)",
+                          "inset 0 1px 1px rgba(255,255,255,0.8), 0 0 12px rgba(6,182,212,0.08)",
                       }}
                     />
                   )}
-                  <span className="absolute inset-0 rounded-xl bg-white/0 hover:bg-white/6 transition-colors duration-300" />
+                  <span className="absolute inset-0 rounded-xl bg-transparent hover:bg-slate-100/60 transition-colors duration-300" />
                   <span className="relative z-10">{label}</span>
                 </Link>
               ))}
@@ -134,14 +120,18 @@ export default function Navbar() {
             {/* CTA + Mobile Toggle */}
             <div className="flex items-center gap-3">
               <Link
-                href="/get-started"
+                href="/login"
+                className="hidden md:inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:text-slate-900 transition-all duration-300 border border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+              >
+                Login
+              </Link>
+              <Link
+                href="/signup"
                 className="hidden md:inline-flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold text-white transition-all duration-300 hover:scale-[1.03] active:scale-[0.98]"
                 style={{
-                  background:
-                    "linear-gradient(135deg, rgba(139,92,246,0.6), rgba(59,130,246,0.6))",
-                  boxShadow:
-                    "0 0 20px rgba(139,92,246,0.25), inset 0 1px 1px rgba(255,255,255,0.15)",
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+                  boxShadow: "0 0 20px rgba(59,130,246,0.35), inset 0 1px 1px rgba(255,255,255,0.25)",
+                  border: "1px solid rgba(255,255,255,0.20)",
                 }}
               >
                 Get Started
@@ -163,22 +153,22 @@ export default function Navbar() {
               {/* Hamburger */}
               <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="md:hidden relative w-10 h-10 flex items-center justify-center rounded-xl bg-white/6 border border-white/10 hover:bg-white/10 transition-all duration-300"
+                className="md:hidden relative w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 border border-slate-200 hover:bg-slate-200 transition-all duration-300"
                 aria-label="Toggle menu"
               >
                 <div className="w-5 flex flex-col items-center gap-1.25">
                   <span
-                    className={`block h-0.5 w-full bg-white rounded-full transition-all duration-300 origin-center ${
+                    className={`block h-0.5 w-full bg-slate-700 rounded-full transition-all duration-300 origin-center ${
                       isOpen ? "rotate-45 translate-y-1.75" : ""
                     }`}
                   />
                   <span
-                    className={`block h-0.5 w-full bg-white rounded-full transition-all duration-300 ${
+                    className={`block h-0.5 w-full bg-slate-700 rounded-full transition-all duration-300 ${
                       isOpen ? "opacity-0 scale-x-0" : ""
                     }`}
                   />
                   <span
-                    className={`block h-0.5 w-full bg-white rounded-full transition-all duration-300 origin-center ${
+                    className={`block h-0.5 w-full bg-slate-700 rounded-full transition-all duration-300 origin-center ${
                       isOpen ? "-rotate-45 -translate-y-1.75" : ""
                     }`}
                   />
@@ -193,7 +183,7 @@ export default function Navbar() {
               isOpen ? "max-h-100 opacity-100" : "max-h-0 opacity-0"
             }`}
           >
-            <div className="px-6 pb-5 pt-2 border-t border-white/8">
+            <div className="px-6 pb-5 pt-2 border-t border-slate-200/60">
               <div className="flex flex-col gap-1">
                 {navLinks.map(({ href, label }, i) => (
                   <Link
@@ -205,8 +195,8 @@ export default function Navbar() {
                     }}
                     className={`relative px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${
                       activeLink === href
-                        ? "text-white bg-white/8"
-                        : "text-white/60 hover:text-white hover:bg-white/4"
+                        ? "text-slate-900 bg-cyan-50 border border-cyan-200/60"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                     }`}
                     style={{
                       transitionDelay: isOpen ? `${i * 50}ms` : "0ms",
@@ -220,7 +210,7 @@ export default function Navbar() {
                   </Link>
                 ))}
                 <div
-                  className="mt-2 transition-all duration-300"
+                  className="mt-2 flex flex-col gap-2 transition-all duration-300"
                   style={{
                     transitionDelay: isOpen
                       ? `${navLinks.length * 50}ms`
@@ -230,13 +220,19 @@ export default function Navbar() {
                   }}
                 >
                   <Link
-                    href="/get-started"
+                    href="/login"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center justify-center w-full px-5 py-3 rounded-xl text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-50 transition-all duration-300"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    href="/signup"
                     onClick={() => setIsOpen(false)}
                     className="flex items-center justify-center gap-2 w-full px-5 py-3 rounded-xl text-sm font-semibold text-white transition-all duration-300"
                     style={{
-                      background:
-                        "linear-gradient(135deg, rgba(139,92,246,0.5), rgba(59,130,246,0.5))",
-                      border: "1px solid rgba(255,255,255,0.1)",
+                      background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+                      border: "1px solid rgba(255,255,255,0.20)",
                     }}
                   >
                     Get Started
