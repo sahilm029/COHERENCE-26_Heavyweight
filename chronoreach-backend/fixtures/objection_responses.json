@@ -1,0 +1,26 @@
+{
+    "timing": {
+        "sample_reply": "Thanks for reaching out, but it's not the right time for us. Maybe later this year.",
+        "draft_response": "Completely understand — timing is everything. I'll circle back in Q2. In the meantime, here's a quick guide on outreach best practices that might be useful regardless: [RESOURCE_LINK]. Would sometime around April work better for a quick chat?"
+    },
+    "wrong_person": {
+        "sample_reply": "I'm not the right person for this. You should talk to our Head of Growth.",
+        "draft_response": "Appreciate you pointing me in the right direction. Would you mind connecting me with your Head of Growth? Here's a one-liner they can scan: 'AI-powered outreach that books meetings without spam — worth a 15-min look.'"
+    },
+    "competitor": {
+        "sample_reply": "We already use HubSpot for our outreach sequences.",
+        "draft_response": "HubSpot is solid for CRM — great choice. One thing we hear from teams using it for outreach specifically is that the sequences can feel templated to recipients. Our AI actually adapts tone and timing per lead. Curious — are your current open rates where you'd want them?"
+    },
+    "budget": {
+        "sample_reply": "Looks interesting but we don't have budget for new tools right now.",
+        "draft_response": "Totally fair. For context — a fintech your size saved about 25 hours/week by automating their outreach, which more than paid for itself in the first month. Would a free 2-week pilot make sense so you can see the ROI before committing anything?"
+    },
+    "no_interest": {
+        "sample_reply": "Not interested, please remove me from your list.",
+        "draft_response": "Understood — thanks for letting me know. You're removed. Wishing you and the team the best."
+    },
+    "positive": {
+        "sample_reply": "This looks interesting! I'd be open to a quick call.",
+        "draft_response": "Great to hear! I'd love to walk you through a quick demo. Here's my calendar — grab any slot that works: [CALENDAR_LINK]. The call will be 15 minutes — I'll share some insights specific to your space."
+    }
+}

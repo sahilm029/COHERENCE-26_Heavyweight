@@ -1,0 +1,98 @@
+{
+    "priya@acmesaas.com": {
+        "step_1": {
+            "subject": "Quick thought on AcmeSaaS's UPI expansion",
+            "body": "Priya,\n\nNoticed AcmeSaaS just closed your Series A — congrats. Scaling a payments team post-funding is a different beast entirely.\n\nWe helped a similar fintech (50-person, Series A) cut their outreach setup from 6 hours to 20 minutes while keeping deliverability above 95%.\n\nCurious — how are you currently handling outbound to potential partners?",
+            "hooks_used": [
+                "funding_stage",
+                "company",
+                "title"
+            ],
+            "word_count": 52,
+            "language": "en"
+        },
+        "step_2": {
+            "subject": "Re: AcmeSaaS outreach",
+            "body": "Priya,\n\nFollowing up briefly. I came across a case study where a fintech similar to AcmeSaaS reduced email bounce rates by 40% by switching from manual sequences to AI-timed sends.\n\nThe key insight was sending during each recipient's peak engagement window — not just business hours.\n\nHappy to share the full breakdown if useful.",
+            "hooks_used": [
+                "company",
+                "industry"
+            ],
+            "word_count": 55,
+            "language": "en"
+        },
+        "step_3": {
+            "subject": "Re: One last note",
+            "body": "Priya,\n\nI know your inbox is busy — this is my last note.\n\nIf outbound outreach is on your radar for Q2, I'd love 15 minutes to share what's working for fintechs like yours.\n\nIf not, totally understand. Either way — [CALENDAR_LINK]\n\nCheers,\nRavi",
+            "hooks_used": [
+                "company"
+            ],
+            "word_count": 47,
+            "language": "en"
+        }
+    },
+    "rahul@razorpay.com": {
+        "step_1": {
+            "subject": "Razorpay's growth and a quick question",
+            "body": "Rahul,\n\nSaw the Series F news — $160M is no joke. When you're scaling that fast, outbound partnerships become a pipeline challenge, not just a sales one.\n\nCurious how your team handles multi-step outreach to potential integration partners right now.",
+            "hooks_used": [
+                "company",
+                "insight",
+                "title"
+            ],
+            "word_count": 42,
+            "language": "en"
+        },
+        "step_2": {
+            "subject": "Re: Partnership outreach at Razorpay",
+            "body": "Rahul,\n\nQuick follow-up. One pattern we've seen with payments companies at your scale: the teams that automate their outreach sequences (with human-like timing) book 3x more partner calls than those doing it manually.\n\nWe built a tool that does exactly this. Worth a look?",
+            "hooks_used": [
+                "company",
+                "industry"
+            ],
+            "word_count": 48,
+            "language": "en"
+        },
+        "step_3": {
+            "subject": "Re: Last note from me",
+            "body": "Rahul,\n\nLast message from me. If automating outreach is something Razorpay's partnerships team is thinking about, I'd love a quick chat.\n\nIf the timing isn't right, no worries at all. [CALENDAR_LINK]",
+            "hooks_used": [
+                "company"
+            ],
+            "word_count": 35,
+            "language": "en"
+        }
+    },
+    "ananya@zepto.com": {
+        "step_1": {
+            "subject": "Zepto's 100-city expansion",
+            "body": "Ananya,\n\nRead about Zepto expanding dark stores to 100 cities by Q2. That kind of growth means your team is juggling vendor partnerships at scale.\n\nCurious — are you automating any of your outreach to new supply chain partners, or is it still mostly manual?",
+            "hooks_used": [
+                "company",
+                "insight",
+                "title"
+            ],
+            "word_count": 45,
+            "language": "en"
+        },
+        "step_2": {
+            "subject": "Re: Supply chain outreach",
+            "body": "Ananya,\n\nFollowing up quickly. We recently helped a logistics startup automate their partner outreach — they went from 10 manual emails/day to 50 AI-personalized ones with zero spam flags.\n\nThe secret was behavioral timing — sending when each recipient is most likely to engage.\n\nHappy to share details if relevant.",
+            "hooks_used": [
+                "industry",
+                "company"
+            ],
+            "word_count": 50,
+            "language": "en"
+        },
+        "step_3": {
+            "subject": "Re: Final note",
+            "body": "Ananya,\n\nJust a quick final note. If scaling outreach is on Zepto's roadmap, I'd love 15 minutes to show what's possible.\n\nTotally fine if now isn't the right time. [CALENDAR_LINK]",
+            "hooks_used": [
+                "company"
+            ],
+            "word_count": 32,
+            "language": "en"
+        }
+    }
+}

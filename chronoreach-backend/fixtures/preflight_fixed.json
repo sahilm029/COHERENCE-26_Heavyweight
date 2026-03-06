@@ -1,0 +1,12 @@
+{
+    "original_body": "LIMITED OFFER!! Buy now and get a FREE TRIAL of our amazing platform! Click here to get started: https://example.com/signup. Don't miss this INCREDIBLE DEAL — act fast before it's gone! Visit https://example.com/pricing and https://example.com/demo for more info!",
+    "fixed_body": "Wanted to share something that's been helping fintech teams like yours streamline their outreach. We recently worked with a similar company that cut their campaign setup time by 80% while keeping deliverability above 95%. Would it be worth a quick conversation to see if this could help your team too?",
+    "score_before": 7.2,
+    "score_after": 1.9,
+    "issues_fixed": [
+        "spam_phrase",
+        "exclamation_overuse",
+        "too_many_links",
+        "excessive_caps"
+    ]
+}
