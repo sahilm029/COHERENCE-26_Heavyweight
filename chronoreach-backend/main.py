@@ -18,9 +18,13 @@ async def lifespan(app: FastAPI):
     # Start Gmail inbox monitor (reply detection)
     from services.inbox_monitor import inbox_monitor_loop
     monitor_task = asyncio.create_task(inbox_monitor_loop())
+    # Start WhatsApp reply poller (replaces webhook dependency)
+    from services.whatsapp_poller import whatsapp_poller_loop
+    wa_poller_task = asyncio.create_task(whatsapp_poller_loop())
     yield
     # Shutdown
     monitor_task.cancel()
+    wa_poller_task.cancel()
     scheduler.shutdown()
 
 app = FastAPI(title="ChronoReach API", lifespan=lifespan)

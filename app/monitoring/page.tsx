@@ -77,7 +77,7 @@ const STAGES = [
 /* ─── Main Page ─── */
 export default function MonitoringPage() {
   const [config, setConfig] = useState<AgentConfig>(defaultAgentConfig);
-  const [metrics, setMetrics] = useState({ sent: 0, opened: 0, replied: 0, meetings: 0, total: 0 });
+  const [metrics, setMetrics] = useState({ sent: 0, alerts: 0, replied: 0, meetings: 0, total: 0 });
   const [leads, setLeads] = useState<LeadData[]>([]);
   const [selectedLead, setSelectedLead] = useState<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState("");
@@ -89,9 +89,12 @@ export default function MonitoringPage() {
     fetch(`${API}/api/campaigns/1/status`)
       .then(r => r.json())
       .then(data => {
+        // Count ClawBot alerts from lead events
+        const allEvents = (data.lead_progress || []).flatMap((l: any) => l.events || []);
+        const alertCount = allEvents.filter((e: any) => e.type === "positive_intent" || e.type === "objection_detected").length;
         setMetrics({
           sent: data.sent ?? 0,
-          opened: data.opened ?? 0,
+          alerts: alertCount,
           replied: data.replied ?? 0,
           meetings: data.meetings_booked ?? 0,
           total: data.total_leads ?? 0,
@@ -124,7 +127,7 @@ export default function MonitoringPage() {
 
   const metricCards = [
     { label: "Messages Sent", value: String(metrics.sent), sub: `${metrics.total} total leads`, color: "#3b82f6", icon: "📨" },
-    { label: "Email Opens", value: String(metrics.opened), sub: metrics.total > 0 ? `${((metrics.opened / metrics.total) * 100).toFixed(0)}% open rate` : "—", color: "#22c55e", icon: "👁" },
+    { label: "ClawBot Alerts", value: String(metrics.alerts), sub: "WhatsApp notified", color: "#22c55e", icon: "🦅" },
     { label: "Reply Rate", value: metrics.total > 0 ? `${((metrics.replied / metrics.total) * 100).toFixed(1)}%` : "0%", sub: `${metrics.replied} replied`, color: "#a855f7", icon: "💬" },
     { label: "Booked Calls", value: String(metrics.meetings), sub: "via ClawBot", color: "#f59e0b", icon: "📞" },
   ];
