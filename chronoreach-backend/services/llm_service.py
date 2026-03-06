@@ -308,20 +308,21 @@ Email:
 
     # --- NL to Workflow ---
 
-    @retry(stop=stop_after_attempt(2), wait=wait_exponential(min=1, max=8))
     async def natural_language_to_workflow(self, description: str) -> dict:
         try:
+            import asyncio
             from services.copilot_service import natural_language_to_workflow as _nl_to_wf
-            return await _nl_to_wf(description)
+            # 10 second timeout — if Gemini is slow, fall back instantly
+            return await asyncio.wait_for(_nl_to_wf(description), timeout=10.0)
         except Exception:
-            # Minimal fallback template
+            print("[Copilot] ⚡ Using instant template (LLM timed out or failed)")
             return {
                 "nodes": [
-                    {"id": "t1", "node_type": "trigger", "label": "Start", "config": {}, "position_x": 0, "position_y": 300},
-                    {"id": "b1", "node_type": "blocklist", "label": "Blocklist", "config": {"domains": ["zoho.com", "salesforce.com"]}, "position_x": 200, "position_y": 300},
-                    {"id": "m1", "node_type": "ai_message", "label": "Draft Intro", "config": {"step": 1}, "position_x": 400, "position_y": 300},
-                    {"id": "d1", "node_type": "delay", "label": "Wait 24h", "config": {"delay_hours": 24}, "position_x": 600, "position_y": 300},
-                    {"id": "s1", "node_type": "send_email", "label": "Send", "config": {}, "position_x": 800, "position_y": 300},
+                    {"id": "t1", "node_type": "trigger", "label": "⚡ Start", "config": {}, "position_x": 0, "position_y": 300},
+                    {"id": "b1", "node_type": "blocklist", "label": "🛡️ Blocklist", "config": {"domains": ["zoho.com", "salesforce.com"]}, "position_x": 200, "position_y": 300},
+                    {"id": "m1", "node_type": "ai_message", "label": "🤖 AI Draft", "config": {"step": 1}, "position_x": 400, "position_y": 300},
+                    {"id": "d1", "node_type": "delay", "label": "⏳ Smart Timing", "config": {"delay_hours": 1}, "position_x": 600, "position_y": 300},
+                    {"id": "s1", "node_type": "send_email", "label": "📧 Send Email", "config": {}, "position_x": 800, "position_y": 300},
                 ],
                 "edges": [
                     {"source": "t1", "target": "b1"},

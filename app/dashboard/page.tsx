@@ -350,7 +350,7 @@ export default function DashboardPage() {
             {isLaunching ? "🚀 Launching..." : "🚀 Launch"}
           </button>
           <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl ml-2" style={{ background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.20)" }}>
-            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+            <div className="w-2 h-2 rounded-full bg-green-400 animate-live-dot" />
             <span className="text-xs font-semibold text-green-400">Agent Active</span>
           </div>
         </div>
@@ -501,7 +501,7 @@ export default function DashboardPage() {
           >
             <p className="text-[10px] font-bold tracking-widest uppercase mb-3 text-blue-400/60">Execution Log</p>
             {execLogs.map((log, i) => (
-              <p key={i} className={`text-xs leading-relaxed ${log.color}`}>{log.line}</p>
+              <p key={i} className={`text-xs leading-relaxed animate-fade-in-up ${log.color}`}>{log.line}</p>
             ))}
           </div>
         </div>
