@@ -60,7 +60,16 @@ async def track_open(campaign_id: int, lead_id: int, db: AsyncSession = Depends(
 
     print(f"[Track] 👁 Email opened by {lead_name} ({company}) — open #{open_count}")
 
-    # Trigger ClawBot after threshold opens
+    # WhatsApp notification on first open only
+    if open_count == 1:
+        from services.clawbot_service import send_whatsapp
+        user_phone = os.getenv("USER_PHONE", "").replace("whatsapp:", "")
+        if user_phone:
+            msg = f"👁 {lead_name} ({company}) just opened your email!"
+            success = send_whatsapp(user_phone, msg)
+            print(f"[Track] 📱 Open alert {'✅ sent' if success else '❌ failed'} for {lead_name}")
+
+    # Trigger ClawBot after threshold opens (hot lead detection)
     if open_count >= CLAWBOT_THRESHOLD:
         # Check if we already sent an alert for this lead
         existing = await db.scalar(

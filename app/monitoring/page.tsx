@@ -1,9 +1,34 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { AgentSidebar, AgentConfig, defaultAgentConfig } from "@/components/AgentSidebar";
 
+/* ─── Types ─── */
+interface LeadEvent {
+  type: string;
+  payload: Record<string, any>;
+  time: string;
+}
+interface LeadData {
+  id: number;
+  name: string;
+  company: string;
+  email: string;
+  status: string;
+  current_stage: string;
+  events: LeadEvent[];
+}
+interface Metrics {
+  sent: number;
+  opened: number;
+  replied: number;
+  meetings: number;
+  total: number;
+  blocked: number;
+}
+
+/* ─── Navbar ─── */
 function MonitoringNavbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 py-3 px-6">
@@ -49,83 +74,97 @@ function MonitoringNavbar() {
   );
 }
 
+/* ─── Event Icon + Label Map ─── */
+function eventIcon(type: string) {
+  const map: Record<string, { icon: string; label: string; color: string }> = {
+    email_sent: { icon: "📧", label: "Email sent", color: "#3b82f6" },
+    email_opened: { icon: "👁", label: "Email opened", color: "#22c55e" },
+    reply_received: { icon: "💬", label: "Reply received", color: "#a855f7" },
+    positive_intent: { icon: "🎯", label: "Positive intent", color: "#f59e0b" },
+    objection_detected: { icon: "🛡️", label: "Objection detected", color: "#ef4444" },
+    meeting_booked: { icon: "📅", label: "Meeting booked", color: "#06b6d4" },
+    clawbot_triggered: { icon: "🦅", label: "ClawBot alert", color: "#f59e0b" },
+    followup_sent: { icon: "📬", label: "Follow-up sent", color: "#22c55e" },
+    message_generated: { icon: "🤖", label: "AI drafted", color: "#8b5cf6" },
+    blocklist_passed: { icon: "🛡️", label: "Cleared blocklist", color: "#6b7280" },
+    blocked: { icon: "🚫", label: "Blocked", color: "#ef4444" },
+    scheduled: { icon: "⏳", label: "Scheduled", color: "#6b7280" },
+  };
+  return map[type] || { icon: "▸", label: type, color: "#6b7280" };
+}
+
+/* ─── Lead Status Badge ─── */
+function leadStatusBadge(events: LeadEvent[]) {
+  const types = events.map(e => e.type);
+  if (types.includes("meeting_booked")) return { label: "Meeting Booked", color: "#06b6d4", bg: "rgba(6,182,212,0.12)" };
+  if (types.includes("positive_intent")) return { label: "Positive Intent", color: "#f59e0b", bg: "rgba(245,158,11,0.12)" };
+  if (types.includes("objection_detected")) return { label: "Objection", color: "#ef4444", bg: "rgba(239,68,68,0.12)" };
+  if (types.includes("reply_received")) return { label: "Replied", color: "#a855f7", bg: "rgba(168,85,247,0.12)" };
+  if (types.includes("email_opened")) return { label: "Opened", color: "#22c55e", bg: "rgba(34,197,94,0.12)" };
+  if (types.includes("email_sent")) return { label: "Sent", color: "#3b82f6", bg: "rgba(59,130,246,0.12)" };
+  if (types.includes("blocked")) return { label: "Blocked", color: "#ef4444", bg: "rgba(239,68,68,0.12)" };
+  return { label: "Pending", color: "#6b7280", bg: "rgba(107,114,128,0.12)" };
+}
+
+/* ─── Main Page ─── */
 export default function MonitoringPage() {
   const [config, setConfig] = useState<AgentConfig>(defaultAgentConfig);
-  const [metrics, setMetrics] = useState([
-    { label: "Messages Sent", value: "—", sub: "Loading...", color: "#3b82f6", icon: "📨" },
-    { label: "Open Rate", value: "—", sub: "", color: "#22c55e", icon: "👁" },
-    { label: "Reply Rate", value: "—", sub: "", color: "#a855f7", icon: "💬" },
-    { label: "Booked Calls", value: "—", sub: "", color: "#f59e0b", icon: "📞" },
-  ]);
-  const [feed, setFeed] = useState<{ name: string; action: string; time: string; color: string }[]>([]);
+  const [metrics, setMetrics] = useState<Metrics>({ sent: 0, opened: 0, replied: 0, meetings: 0, total: 0, blocked: 0 });
+  const [leads, setLeads] = useState<LeadData[]>([]);
+  const [expandedLead, setExpandedLead] = useState<number | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string>("");
+  const [pulse, setPulse] = useState(false);
 
   const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+  const fetchData = useCallback(() => {
+    fetch(`${API}/api/campaigns/1/status`)
+      .then(r => r.json())
+      .then(data => {
+        const m: Metrics = {
+          sent: data.sent ?? 0,
+          opened: data.opened ?? 0,
+          replied: data.replied ?? 0,
+          meetings: data.meetings_booked ?? 0,
+          total: data.total_leads ?? 0,
+          blocked: data.blocked ?? 0,
+        };
+        setMetrics(m);
+        if (data.lead_progress) setLeads(data.lead_progress);
+        setLastUpdated(new Date().toLocaleTimeString());
+        setPulse(true);
+        setTimeout(() => setPulse(false), 600);
+      })
+      .catch(() => { });
+  }, [API]);
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem("agentConfig");
       if (raw) setConfig(JSON.parse(raw) as AgentConfig);
     } catch { /* keep default */ }
+    fetchData();
+    // Auto-refresh every 10s
+    const interval = setInterval(fetchData, 10000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
 
-    // Fetch live campaign data
-    fetch(`${API}/api/campaigns/1/status`)
-      .then(r => r.json())
-      .then(data => {
-        const sent = data.sent ?? 0;
-        const opened = data.opened ?? 0;
-        const replied = data.replied ?? 0;
-        const meetings = data.meetings_booked ?? 0;
-        const total = data.total_leads ?? 1;
-        setMetrics([
-          { label: "Messages Sent", value: String(sent), sub: `${total} total leads`, color: "#3b82f6", icon: "📨" },
-          { label: "Open Rate", value: total > 0 ? `${((opened / total) * 100).toFixed(1)}%` : "0%", sub: `${opened} opened`, color: "#22c55e", icon: "👁" },
-          { label: "Reply Rate", value: total > 0 ? `${((replied / total) * 100).toFixed(1)}%` : "0%", sub: `${replied} replied`, color: "#a855f7", icon: "💬" },
-          { label: "Booked Calls", value: String(meetings), sub: "via ClawBot", color: "#f59e0b", icon: "📞" },
-        ]);
-
-        // Map leads progress to feed
-        if (data.lead_progress) {
-          const feedItems = (data.lead_progress as any[]).slice(0, 8).map((lp: any, i: number) => ({
-            name: lp.name || `Lead ${lp.id}`,
-            action: lp.status === "completed" ? "Pipeline completed" : `At stage ${lp.current_stage || "—"}`,
-            time: lp.status === "completed" ? "✅ Done" : "In progress",
-            color: lp.status === "completed" ? "#22c55e" : "#3b82f6",
-          }));
-          setFeed(feedItems);
-        }
-      })
-      .catch(() => {
-        // Fallback
-        setMetrics([
-          { label: "Messages Sent", value: "7", sub: "15 total leads", color: "#3b82f6", icon: "📨" },
-          { label: "Open Rate", value: "73.3%", sub: "11 opened", color: "#22c55e", icon: "👁" },
-          { label: "Reply Rate", value: "20.0%", sub: "3 replied", color: "#a855f7", icon: "💬" },
-          { label: "Booked Calls", value: "2", sub: "via ClawBot", color: "#f59e0b", icon: "📞" },
-        ]);
-      });
-
-    // SSE stream for real-time events
+  // SSE for real-time updates
+  useEffect(() => {
     const es = new EventSource(`${API}/api/campaigns/1/stream`);
-    es.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.sent !== undefined) {
-          setMetrics(prev => prev.map(m =>
-            m.label === "Messages Sent" ? { ...m, value: String(data.sent) } : m
-          ));
-        }
-        if (data.event) {
-          setFeed(prev => [{
-            name: data.lead || "System",
-            action: data.event,
-            time: "Just now",
-            color: data.event.includes("sent") ? "#22c55e" : data.event.includes("blocked") ? "#ef4444" : "#3b82f6",
-          }, ...prev].slice(0, 10));
-        }
-      } catch { /* ignore parse errors */ }
+    es.onmessage = () => {
+      // Refresh data on any SSE event
+      fetchData();
     };
     return () => es.close();
-  }, []);
+  }, [API, fetchData]);
+
+  const metricCards = [
+    { label: "Messages Sent", value: String(metrics.sent), sub: `${metrics.total} total leads`, color: "#3b82f6", icon: "📨", gradient: "from-blue-500/10 to-blue-600/5" },
+    { label: "Email Opens", value: String(metrics.opened), sub: metrics.total > 0 ? `${((metrics.opened / metrics.total) * 100).toFixed(0)}% open rate` : "—", color: "#22c55e", icon: "👁", gradient: "from-emerald-500/10 to-emerald-600/5" },
+    { label: "Reply Rate", value: metrics.total > 0 ? `${((metrics.replied / metrics.total) * 100).toFixed(1)}%` : "0%", sub: `${metrics.replied} replied`, color: "#a855f7", icon: "💬", gradient: "from-violet-500/10 to-violet-600/5" },
+    { label: "Booked Calls", value: String(metrics.meetings), sub: "via ClawBot", color: "#f59e0b", icon: "📞", gradient: "from-amber-500/10 to-amber-600/5" },
+  ];
 
   return (
     <div className="min-h-screen" style={{ background: "linear-gradient(135deg, #ffffff 0%, #dbeafe 40%, #3b82f6 100%)" }}>
@@ -137,10 +176,7 @@ export default function MonitoringPage() {
       </div>
 
       {/* Header */}
-      <div
-        className="relative z-10 pl-72 pr-8 pt-24 pb-5 flex items-center justify-between"
-        style={{ borderBottom: "1px solid rgba(59,130,246,0.15)" }}
-      >
+      <div className="relative z-10 pl-72 pr-8 pt-24 pb-5 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(59,130,246,0.15)" }}>
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Monitoring</h1>
           <p className="text-sm mt-0.5 text-slate-500">
@@ -148,22 +184,25 @@ export default function MonitoringPage() {
             <span className="text-blue-600 font-semibold">{config.agentName}</span>
           </p>
         </div>
-        <div
-          className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl"
-          style={{ background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.20)" }}
-        >
-          <div className="w-2 h-2 rounded-full bg-green-400 animate-live-dot" />
-          <span className="text-xs font-semibold text-green-400">Live</span>
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] text-slate-400">{lastUpdated && `Updated ${lastUpdated}`}</span>
+          <div
+            className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl"
+            style={{ background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.20)" }}
+          >
+            <div className="w-2 h-2 rounded-full bg-green-400 animate-live-dot" />
+            <span className="text-xs font-semibold text-green-400">Live</span>
+          </div>
         </div>
       </div>
 
       {/* Metric cards */}
       <div className="relative z-10 pl-72 pr-8 pt-6">
-        <div className="grid grid-cols-4 gap-4 stagger-children">
-          {metrics.map(({ label, value, sub, color, icon }) => (
+        <div className="grid grid-cols-4 gap-4">
+          {metricCards.map(({ label, value, sub, color, icon, gradient }) => (
             <div
               key={label}
-              className="rounded-2xl p-4 glass-card-hover animate-fade-in-up"
+              className={`rounded-2xl p-4 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg cursor-default ${pulse ? "animate-fade-in-up" : ""}`}
               style={{
                 background: "rgba(255,255,255,0.65)",
                 backdropFilter: "blur(20px) saturate(1.8)",
@@ -175,15 +214,15 @@ export default function MonitoringPage() {
                 <p className="text-xs text-slate-500">{label}</p>
                 <span className="text-base">{icon}</span>
               </div>
-              <p className="text-2xl font-bold text-slate-900">{value}</p>
+              <p className="text-2xl font-bold text-slate-900 transition-all duration-500">{value}</p>
               <p className="text-[11px] mt-1 font-semibold" style={{ color }}>{sub}</p>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Activity feed */}
-      <div className="relative z-10 pl-72 pr-8 pt-6 pb-4">
+      {/* Lead Pipeline */}
+      <div className="relative z-10 pl-72 pr-8 pt-6 pb-8">
         <div
           className="rounded-3xl p-6"
           style={{
@@ -193,152 +232,155 @@ export default function MonitoringPage() {
             boxShadow: "0 8px 40px rgba(0,0,0,0.08)",
           }}
         >
-          <p className="text-[11px] font-bold tracking-widest uppercase mb-6 text-slate-400">
-            Recent Activity
-          </p>
-          <div className="space-y-2.5 max-h-64 overflow-y-auto">
-            {feed.length === 0 && (
-              <p className="text-sm text-slate-400 text-center py-8">Launch a campaign to see activity here...</p>
+          <div className="flex items-center justify-between mb-6">
+            <p className="text-[11px] font-bold tracking-widest uppercase text-slate-400">
+              Lead Pipeline
+            </p>
+            <div className="flex items-center gap-2">
+              {["Sent", "Opened", "Replied", "Meeting"].map((s, i) => (
+                <span key={s} className="flex items-center gap-1 text-[10px] text-slate-400">
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: ["#3b82f6", "#22c55e", "#a855f7", "#06b6d4"][i] }} />
+                  {s}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {leads.length === 0 && (
+              <p className="text-sm text-slate-400 text-center py-8">Launch a campaign to see lead activity here...</p>
             )}
-            {feed.map(({ name, action, time, color }, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-4 py-3 px-4 rounded-xl animate-fade-in-up glass-card-hover"
-                style={{
-                  background: "rgba(255,255,255,0.70)",
-                  border: "1px solid rgba(255,255,255,0.90)",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-                }}
-              >
-                <div
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ background: color, boxShadow: `0 0 8px ${color}70` }}
-                />
-                <p className="text-sm font-semibold text-slate-800 w-32 shrink-0">{name}</p>
-                <p className="text-sm text-slate-500">{action}</p>
-                <p className="text-xs text-slate-400 ml-auto shrink-0">{time}</p>
-              </div>
-            ))}
+            {leads.map((lead) => {
+              const badge = leadStatusBadge(lead.events || []);
+              const isExpanded = expandedLead === lead.id;
+              const replyEvent = (lead.events || []).find(e => e.type === "reply_received");
+              const openCount = (lead.events || []).filter(e => e.type === "email_opened").length;
+              const hasMeteting = (lead.events || []).some(e => e.type === "meeting_booked");
+
+              return (
+                <div key={lead.id} className="animate-fade-in-up">
+                  {/* Lead Row */}
+                  <div
+                    onClick={() => setExpandedLead(isExpanded ? null : lead.id)}
+                    className="flex items-center gap-4 py-3 px-4 rounded-xl transition-all duration-200 cursor-pointer hover:shadow-md"
+                    style={{
+                      background: isExpanded ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.70)",
+                      border: `1px solid ${isExpanded ? "rgba(59,130,246,0.25)" : "rgba(255,255,255,0.90)"}`,
+                      boxShadow: isExpanded ? "0 4px 16px rgba(59,130,246,0.10)" : "0 2px 8px rgba(0,0,0,0.05)",
+                    }}
+                  >
+                    {/* Status dot */}
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: badge.color, boxShadow: `0 0 8px ${badge.color}50` }} />
+
+                    {/* Name + Company */}
+                    <div className="w-36 shrink-0">
+                      <p className="text-sm font-semibold text-slate-800">{lead.name}</p>
+                      <p className="text-[10px] text-slate-400">{lead.company}</p>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="flex-1 flex items-center gap-1.5">
+                      {["email_sent", "email_opened", "reply_received", "meeting_booked"].map((stage, i) => {
+                        const hasStage = (lead.events || []).some(e => e.type === stage);
+                        const colors = ["#3b82f6", "#22c55e", "#a855f7", "#06b6d4"];
+                        return (
+                          <div key={stage} className="flex-1 h-1.5 rounded-full transition-all duration-500" style={{
+                            background: hasStage ? colors[i] : "rgba(0,0,0,0.06)",
+                            boxShadow: hasStage ? `0 0 6px ${colors[i]}40` : "none",
+                          }} />
+                        );
+                      })}
+                    </div>
+
+                    {/* Badge */}
+                    <span
+                      className="text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0"
+                      style={{ color: badge.color, background: badge.bg, border: `1px solid ${badge.color}25` }}
+                    >
+                      {badge.label}
+                    </span>
+
+                    {/* Expand arrow */}
+                    <svg
+                      className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+                      viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                    >
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </div>
+
+                  {/* Expanded Detail */}
+                  {isExpanded && (
+                    <div
+                      className="ml-6 mt-1 mb-2 rounded-xl p-4 animate-fade-in-up"
+                      style={{
+                        background: "rgba(248,250,252,0.90)",
+                        border: "1px solid rgba(59,130,246,0.12)",
+                      }}
+                    >
+                      {/* Quick Stats */}
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="flex items-center gap-1.5 text-[11px]">
+                          <span>📧</span>
+                          <span className="text-slate-500">{lead.email}</span>
+                        </div>
+                        {openCount > 0 && (
+                          <div className="flex items-center gap-1.5 text-[11px]">
+                            <span>👁</span>
+                            <span className="text-emerald-600 font-semibold">{openCount} open{openCount > 1 ? "s" : ""}</span>
+                          </div>
+                        )}
+                        {hasMeteting && (
+                          <div className="flex items-center gap-1.5 text-[11px]">
+                            <span>📅</span>
+                            <span className="text-cyan-600 font-semibold">Meeting booked</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Reply Preview */}
+                      {replyEvent && (
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: "rgba(168,85,247,0.06)", border: "1px solid rgba(168,85,247,0.15)" }}>
+                          <p className="text-[10px] font-bold text-violet-500 uppercase tracking-wide mb-1">Reply</p>
+                          <p className="text-sm text-slate-700 italic">&ldquo;{replyEvent.payload?.reply_text || replyEvent.payload?.body_preview || "No preview"}&rdquo;</p>
+                          {replyEvent.payload?.intent && (
+                            <span className={`inline-block mt-2 text-[10px] font-semibold px-2 py-0.5 rounded-full ${replyEvent.payload.intent === "positive"
+                                ? "text-amber-700 bg-amber-50 border border-amber-200"
+                                : "text-red-700 bg-red-50 border border-red-200"
+                              }`}>
+                              {replyEvent.payload.intent === "positive" ? "🎯 Positive Intent" : "🛡️ Objection"} • {Math.round((replyEvent.payload.confidence || 0) * 100)}%
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Event Timeline */}
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Event Timeline</p>
+                      <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                        {(lead.events || []).map((ev, i) => {
+                          const info = eventIcon(ev.type);
+                          const time = ev.time ? new Date(ev.time).toLocaleTimeString() : "";
+                          return (
+                            <div key={i} className="flex items-center gap-3 py-1.5 px-2 rounded-lg hover:bg-white/60 transition-colors">
+                              <span className="text-sm">{info.icon}</span>
+                              <span className="text-[11px] text-slate-600 flex-1">{info.label}</span>
+                              {ev.payload?.subject && <span className="text-[10px] text-slate-400 truncate max-w-48">{ev.payload.subject}</span>}
+                              <span className="text-[10px] text-slate-400 shrink-0">{time}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* Demo Controls */}
-      <DemoControls API={API} onEvent={(ev: { name: string; action: string; time: string; color: string }) => setFeed(prev => [ev, ...prev].slice(0, 15))} />
-
       {/* Draggable sidebar */}
       <AgentSidebar config={config} activePage="monitoring" />
-    </div>
-  );
-}
-
-/* ─── Demo Controls Component ─── */
-function DemoControls({ API, onEvent }: { API: string; onEvent: (ev: { name: string; action: string; time: string; color: string }) => void }) {
-  const [leads, setLeads] = useState<{ id: number; name: string; company: string; email: string; status: string }[]>([]);
-  const [loading, setLoading] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    fetch(`${API}/api/campaigns/1/status`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.lead_progress) setLeads(data.lead_progress);
-      })
-      .catch(() => { });
-  }, [API]);
-
-  const doAction = async (action: string, leadId: number, leadName: string) => {
-    const key = `${action}-${leadId}`;
-    setLoading(prev => ({ ...prev, [key]: true }));
-    try {
-      const res = await fetch(`${API}/api/simulate/${action}/${leadId}`, { method: "POST" });
-      const data = await res.json();
-
-      const icons: Record<string, string> = { open: "👁", reply: "🧠", positive: "✅" };
-      const labels: Record<string, string> = {
-        open: data.clawbot ? `Opened email — ClawBot triggered!` : `Opened email (${data.total_opens || "?"}x)`,
-        reply: `Objection detected: ${data.type || "timing"} (${Math.round((data.confidence || 0.9) * 100)}%)`,
-        positive: "Positive intent — meeting flow triggered",
-      };
-      const colors: Record<string, string> = { open: "#22c55e", reply: "#a855f7", positive: "#f59e0b" };
-
-      onEvent({
-        name: leadName,
-        action: `${icons[action] || "▸"} ${labels[action] || action}`,
-        time: new Date().toLocaleTimeString(),
-        color: colors[action] || "#3b82f6",
-      });
-    } catch {
-      onEvent({ name: leadName, action: `❌ ${action} failed`, time: "Error", color: "#ef4444" });
-    }
-    setLoading(prev => ({ ...prev, [key]: false }));
-  };
-
-  if (leads.length === 0) return null;
-
-  return (
-    <div className="relative z-10 pl-72 pr-8 pb-8">
-      <div
-        className="rounded-3xl p-6"
-        style={{
-          background: "rgba(255,255,255,0.55)",
-          backdropFilter: "blur(24px) saturate(1.8)",
-          border: "1px solid rgba(245,158,11,0.25)",
-          boxShadow: "0 8px 40px rgba(245,158,11,0.08)",
-        }}
-      >
-        <div className="flex items-center gap-2 mb-5">
-          <span className="text-base">🎮</span>
-          <p className="text-[11px] font-bold tracking-widest uppercase text-amber-600">
-            Demo Controls
-          </p>
-          <span className="text-[10px] text-amber-500 font-medium ml-2 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200">
-            Simulate Events
-          </span>
-        </div>
-        <div className="space-y-2.5">
-          {leads.map((lead) => (
-            <div
-              key={lead.id}
-              className="flex items-center gap-3 py-2.5 px-4 rounded-xl"
-              style={{ background: "rgba(255,255,255,0.70)", border: "1px solid rgba(255,255,255,0.90)" }}
-            >
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-800 truncate">{lead.name}</p>
-                <p className="text-[11px] text-slate-400 truncate">{lead.company || lead.email}</p>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  onClick={() => doAction("open", lead.id, lead.name)}
-                  disabled={loading[`open-${lead.id}`]}
-                  className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all hover:scale-105 disabled:opacity-50"
-                  style={{ background: "rgba(34,197,94,0.12)", color: "#15803d", border: "1px solid rgba(34,197,94,0.20)" }}
-                  title="Simulate email open (click 2-3 times for ClawBot)"
-                >
-                  {loading[`open-${lead.id}`] ? "..." : "👁 Open"}
-                </button>
-                <button
-                  onClick={() => doAction("reply", lead.id, lead.name)}
-                  disabled={loading[`reply-${lead.id}`]}
-                  className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all hover:scale-105 disabled:opacity-50"
-                  style={{ background: "rgba(168,85,247,0.12)", color: "#7c3aed", border: "1px solid rgba(168,85,247,0.20)" }}
-                  title="Simulate objection reply — triggers ClawBot objection handler"
-                >
-                  {loading[`reply-${lead.id}`] ? "..." : "🧠 Objection"}
-                </button>
-                <button
-                  onClick={() => doAction("positive", lead.id, lead.name)}
-                  disabled={loading[`positive-${lead.id}`]}
-                  className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all hover:scale-105 disabled:opacity-50"
-                  style={{ background: "rgba(245,158,11,0.12)", color: "#b45309", border: "1px solid rgba(245,158,11,0.20)" }}
-                  title="Simulate positive reply — triggers meeting booking"
-                >
-                  {loading[`positive-${lead.id}`] ? "..." : "📅 Meeting"}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

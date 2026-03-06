@@ -157,8 +157,7 @@ async def launch_campaign(camp_id: int, background_tasks: BackgroundTasks, db: A
 async def get_c_status(camp_id: int, db: AsyncSession = Depends(get_db)):
     camp = await db.get(Campaign, camp_id)
     if not camp:
-        # Return empty status if campaign doesn't exist yet
-        return {"status": "not_started", "total_leads": 0, "sent": 0, "opened": 0, "replied": 0, "blocked": 0, "meetings_booked": 0, "errors": 0, "leads": []}
+        return {"status": "not_started", "total_leads": 0, "sent": 0, "opened": 0, "replied": 0, "blocked": 0, "meetings_booked": 0, "errors": 0, "leads": [], "lead_progress": []}
     
     total_leads = await db.scalar(select(func.count(CampaignLead.id)).where(CampaignLead.campaign_id==camp_id))
     sent = await db.scalar(select(func.count(Event.id)).where(Event.campaign_id==camp_id, Event.event_type=="email_sent"))
@@ -174,10 +173,24 @@ async def get_c_status(camp_id: int, db: AsyncSession = Depends(get_db)):
     for cl in cls:
         ld = await db.get(Lead, cl.lead_id)
         if ld:
+            # Fetch all events for this lead in this campaign
+            ev_res = await db.execute(
+                select(Event).where(Event.campaign_id==camp_id, Event.lead_id==ld.id).order_by(Event.created_at.asc())
+            )
+            events = ev_res.scalars().all()
+            event_timeline = []
+            for ev in events:
+                event_timeline.append({
+                    "type": ev.event_type,
+                    "payload": ev.payload or {},
+                    "time": ev.created_at.isoformat() if ev.created_at else "",
+                })
+            
             leads_out.append({
                 "id": ld.id, "name": f"{ld.first_name} {ld.last_name}".strip() or ld.email,
                 "company": ld.company, "email": ld.email,
-                "current_stage": cl.current_node_id, "status": cl.status
+                "current_stage": cl.current_node_id, "status": cl.status,
+                "events": event_timeline,
             })
         
     return {

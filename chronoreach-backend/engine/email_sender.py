@@ -9,8 +9,8 @@ from pathlib import Path
 _env_file = Path(__file__).resolve().parent.parent.parent / ".env"
 load_dotenv(_env_file, override=True)
 
-# Backend URL for tracking pixel
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+# Backend URL for tracking pixel — use public TRACKING_URL if set (e.g. localtunnel)
+TRACKING_URL = os.getenv("TRACKING_URL", os.getenv("BACKEND_URL", "http://localhost:8000"))
 
 
 class EmailSender:
@@ -38,7 +38,7 @@ class EmailSender:
             msg.attach(MIMEText(body, "plain"))
             
             # Tracking pixel URL
-            pixel_url = f"{BACKEND_URL}/api/track/{campaign_id}/{lead_id}/open.png"
+            pixel_url = f"{TRACKING_URL}/api/track/{campaign_id}/{lead_id}/open.png"
             
             # HTML version with tracking pixel
             html = f"""<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;color:#1e293b">

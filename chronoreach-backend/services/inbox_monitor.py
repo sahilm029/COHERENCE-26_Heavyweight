@@ -41,13 +41,36 @@ POLL_INTERVAL = int(os.getenv("INBOX_POLL_INTERVAL", "30"))  # seconds
 POSITIVE_KEYWORDS = [
     "yes", "sure", "let's", "lets", "schedule", "meeting", "call",
     "interested", "book", "connect", "chat", "open to", "sounds good",
-    "love to", "would be great", "absolutely", "definitely", "keen"
+    "love to", "would be great", "absolutely", "definitely", "keen",
+    "looking forward", "count me in", "sign me up", "let's do it",
 ]
 OBJECTION_KEYWORDS = [
     "not interested", "no thanks", "busy", "later", "next quarter",
     "already have", "locked in", "unsubscribe", "stop", "remove",
-    "not right now", "not the right time", "pass", "decline"
+    "not right now", "not the right time", "pass", "decline",
+    "sorry", "don't require", "don't need", "not need", "no need",
+    "not at this time", "not for us", "we're good", "we are good",
+    "take me off", "opt out", "not looking", "not relevant",
 ]
+
+
+def _strip_quoted_reply(body: str) -> str:
+    """Strip quoted original email from reply body so it doesn't pollute intent classification."""
+    lines = body.split("\n")
+    clean_lines = []
+    for line in lines:
+        stripped = line.strip()
+        # Stop at quoted text markers
+        if stripped.startswith(">"):
+            break
+        if re.match(r"^On .+ wrote:$", stripped):
+            break
+        if re.match(r"^-{3,}.*Original Message.*-{3,}$", stripped, re.IGNORECASE):
+            break
+        if re.match(r"^From:", stripped) and len(clean_lines) > 0:
+            break
+        clean_lines.append(line)
+    return "\n".join(clean_lines).strip()
 
 
 def _decode_header_value(raw: str) -> str:
@@ -84,10 +107,17 @@ def _get_body(msg: email.message.Message) -> str:
 
 
 def _classify_intent(body: str) -> tuple[str, float]:
-    """Classify reply intent: 'positive' or 'objection'."""
-    lower = body.lower()
+    """Classify reply intent: 'positive' or 'objection'. Strips quoted text first."""
+    # Strip quoted original email so our own template words don't inflate positive score
+    clean_body = _strip_quoted_reply(body)
+    lower = clean_body.lower()
+
+    print(f"[InboxMonitor] 🧠 Classifying: \"{lower[:80]}...\"")
+
     pos_score = sum(1 for kw in POSITIVE_KEYWORDS if kw in lower)
     neg_score = sum(1 for kw in OBJECTION_KEYWORDS if kw in lower)
+
+    print(f"[InboxMonitor] 🧠 Scores: positive={pos_score}, objection={neg_score}")
 
     if pos_score > neg_score:
         confidence = min(0.99, 0.7 + pos_score * 0.08)
@@ -96,8 +126,8 @@ def _classify_intent(body: str) -> tuple[str, float]:
         confidence = min(0.99, 0.7 + neg_score * 0.08)
         return "objection", confidence
     else:
-        # Default to positive if no clear signals
-        return "positive", 0.75
+        # Default to OBJECTION if no clear signals — safer to ask before acting
+        return "objection", 0.60
 
 
 async def _process_reply(sender_email: str, subject: str, body: str, campaign_id: int = 1):
