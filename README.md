@@ -239,6 +239,6 @@ COHERENCE-26_Heavyweight/
 |------|------|
 | **Sahil** | Full Stack + Backend |
 | **Lakshya** | Full Stack + AI Integration |
-| **Nidhi** | Frontend + Design |
+| **Vipul** | Frontend + Design |
 
 Built for **Coherence 7.0 Hackathon — Track 3: Sales & Outreach Systems** 🏆
