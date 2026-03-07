@@ -1,6 +1,5 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Track_3-Sales_%26_Outreach-blue?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Coherence_7.0-Hackathon-purple?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Team-Heavyweight-orange?style=for-the-badge" />
 </p>
 
@@ -239,6 +238,6 @@ COHERENCE-26_Heavyweight/
 |------|------|
 | **Sahil** | Full Stack + Backend |
 | **Lakshya** | Full Stack + AI Integration |
-| **Nidhi** | Frontend + Design |
+| **Vipul** | Frontend + Design |
 
-Built for **Coherence 7.0 Hackathon — Track 3: Sales & Outreach Systems** 🏆
+Built for **Coherence '26 Hackathon — Track 3: Sales & Outreach Systems** 🏆
