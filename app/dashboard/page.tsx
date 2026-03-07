@@ -7,7 +7,7 @@ import { AgentSidebar, AgentConfig, defaultAgentConfig } from "@/components/Agen
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-function DashboardNavbar() {
+function DashboardNavbar({ onLogout }: { onLogout: () => void }) {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 py-3 px-6">
       <div className="max-w-7xl mx-auto">
@@ -41,10 +41,10 @@ function DashboardNavbar() {
                 <Link key={label} href={href} className="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:text-blue-600 hover:bg-white/60 transition-all duration-200">{label}</Link>
               ))}
             </div>
-            <Link href="/login" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all duration-300 hover:scale-[1.03]" style={{ background: "linear-gradient(135deg, #3b82f6, #1d4ed8)", boxShadow: "0 0 16px rgba(59,130,246,0.30)" }}>
+            <button onClick={onLogout} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all duration-300 hover:scale-[1.03]" style={{ background: "linear-gradient(135deg, #3b82f6, #1d4ed8)", boxShadow: "0 0 16px rgba(59,130,246,0.30)" }}>
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
               Logout
-            </Link>
+            </button>
           </div>
         </div>
       </div>
@@ -60,10 +60,20 @@ function LeadsFloatingPanel({ leads }: { leads: Record<string, string>[] }) {
 
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [config, setConfig] = useState<AgentConfig>(defaultAgentConfig);
   const [leads, setLeads] = useState<Record<string, string>[]>([]);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
+    // Auth guard — redirect to login if no session
+    const session = localStorage.getItem("synaptiq_session");
+    if (!session) {
+      router.push("/login");
+      return;
+    }
+    setAuthChecked(true);
+
     try {
       const raw = localStorage.getItem("agentConfig");
       if (raw) setConfig(JSON.parse(raw) as AgentConfig);
@@ -72,6 +82,7 @@ export default function DashboardPage() {
       const rawLeads = localStorage.getItem("leadsData");
       if (rawLeads) setLeads(JSON.parse(rawLeads) as Record<string, string>[]);
     } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const nodeData = [
@@ -82,7 +93,13 @@ export default function DashboardPage() {
     { id: 4, label: "Convert", sub: "Close 🎯", x: 880, y: 60, bg: "rgba(239,68,68,0.18)", border: "rgba(239,68,68,0.40)", glow: "rgba(239,68,68,0.35)", icon: <svg className="w-9 h-9 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg> },
   ];
 
-  const router = useRouter();
+
+
+  const handleLogout = () => {
+    localStorage.removeItem("synaptiq_session");
+    router.push("/login");
+  };
+
   const [nodes, setNodes] = useState(nodeData.map(n => ({ ...n })));
   const [hoveredNode, setHoveredNode] = useState<number | null>(null);
   const draggingNode = useRef<{ id: number; startX: number; startY: number; origX: number; origY: number } | null>(null);
@@ -302,9 +319,17 @@ export default function DashboardPage() {
     }
   };
 
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(135deg, #ffffff 0%, #dbeafe 40%, #3b82f6 100%)" }}>
+        <div className="text-slate-400 text-sm font-medium">Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen" style={{ background: "linear-gradient(135deg, #ffffff 0%, #dbeafe 40%, #3b82f6 100%)" }}>
-      <DashboardNavbar />
+      <DashboardNavbar onLogout={handleLogout} />
       {/* Ambient glows */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-[120px]" style={{ background: "rgba(59,130,246,0.15)" }} />
@@ -462,7 +487,7 @@ export default function DashboardPage() {
                   }}
                 >
                   <div
-                    className="w-20 h-20 rounded-3xl flex items-center justify-center"
+                    className="w-20 h-20 rounded-full flex items-center justify-center"
                     style={{
                       background: bg,
                       border: `1.5px solid ${border}`,
