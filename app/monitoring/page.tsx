@@ -71,7 +71,7 @@ const STAGES = [
   { key: "email_sent", icon: "📧", label: "Sent", color: "#3b82f6" },
   { key: "reply_received", icon: "💬", label: "Replied", color: "#a855f7" },
   { key: "positive_intent", altKey: "objection_detected", icon: "🦅", label: "ClawBot", color: "#f59e0b" },
-  { key: "meeting_booked", icon: "📅", label: "Meeting", color: "#06b6d4" },
+  { key: "meeting_booked", altKey: "meeting_confirmed", icon: "📅", label: "Meeting", color: "#06b6d4" },
 ];
 
 /* ─── Main Page ─── */
@@ -82,6 +82,9 @@ export default function MonitoringPage() {
   const [selectedLead, setSelectedLead] = useState<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState("");
   const [pulse, setPulse] = useState(false);
+  const [shieldFlash, setShieldFlash] = useState(false);
+  const [callingLeadId, setCallingLeadId] = useState<number | null>(null);
+  const [callStatus, setCallStatus] = useState<Record<number, string>>({});
 
   const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -120,6 +123,16 @@ export default function MonitoringPage() {
   useEffect(() => {
     const es = new EventSource(`${API}/api/campaigns/1/stream`);
     es.onmessage = () => fetchData();
+    es.addEventListener("campaign_event", (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.event_type === "blocked") {
+          setShieldFlash(true);
+          setTimeout(() => setShieldFlash(false), 800);
+        }
+      } catch { /* ignore parse errors */ }
+      fetchData();
+    });
     return () => es.close();
   }, [API, fetchData]);
 
@@ -133,7 +146,7 @@ export default function MonitoringPage() {
   ];
 
   return (
-    <div className="min-h-screen" style={{ background: "linear-gradient(135deg, #ffffff 0%, #dbeafe 40%, #3b82f6 100%)" }}>
+    <div className={`min-h-screen transition-all duration-150 ${shieldFlash ? "ring-4 ring-red-500" : ""}`} style={{ background: shieldFlash ? "linear-gradient(135deg, #fef2f2 0%, #fecaca 40%, #ef4444 100%)" : "linear-gradient(135deg, #ffffff 0%, #dbeafe 40%, #3b82f6 100%)" }}>
       <MonitoringNavbar />
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 right-1/4 w-96 h-96 rounded-full blur-[120px]" style={{ background: "rgba(59,130,246,0.15)" }} />
@@ -279,6 +292,42 @@ export default function MonitoringPage() {
                         {intent === "positive" ? "🎯 Positive" : "🛡️ Objection"}
                       </span>
                     )}
+
+                    {/* Call Lead button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (callingLeadId === lead.id) return;
+                        setCallingLeadId(lead.id);
+                        fetch(`${API}/api/calls/initiate`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ campaign_id: 1, lead_id: lead.id }),
+                        })
+                          .then(r => r.json())
+                          .then(d => {
+                            setCallStatus(prev => ({ ...prev, [lead.id]: d.message || "Call dispatched!" }));
+                            setTimeout(() => setCallStatus(prev => { const n = { ...prev }; delete n[lead.id]; return n; }), 4000);
+                          })
+                          .catch(() => setCallStatus(prev => ({ ...prev, [lead.id]: "Call failed" })))
+                          .finally(() => setCallingLeadId(null));
+                      }}
+                      className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-white transition-all duration-200 hover:scale-105 active:scale-95"
+                      style={{
+                        background: callingLeadId === lead.id ? "rgba(100,100,100,0.5)" : "linear-gradient(135deg, #22c55e, #16a34a)",
+                        boxShadow: "0 2px 8px rgba(34,197,94,0.30)",
+                        opacity: callingLeadId !== null && callingLeadId !== lead.id ? 0.5 : 1,
+                      }}
+                      title={callStatus[lead.id] || "Call this lead with AI agent"}
+                    >
+                      {callingLeadId === lead.id ? (
+                        <><span className="animate-spin">⏳</span> Calling...</>
+                      ) : callStatus[lead.id] ? (
+                        <><span>✅</span> Called!</>
+                      ) : (
+                        <><span>📞</span> Call</>
+                      )}
+                    </button>
                   </div>
                 );
               })}

@@ -82,6 +82,7 @@ async def confirm_leads(payload: dict, db: AsyncSession = Depends(get_db)):
         company = _pick(row, "org", "company", "Company", "COMPANY", "Organization", "organisation")
         title = _pick(row, "job_title", "title", "Title", "JOB_TITLE", "designation", "Designation")
         funding = _pick(row, "funding_round", "Funding", "funding", "round")
+        phone = _pick(row, "phone", "Phone", "PHONE", "phone_number", "mobile", "Mobile", "contact")
         
         insight = INSIGHTS.get(company) if company else None
         if insight:
@@ -99,6 +100,7 @@ async def confirm_leads(payload: dict, db: AsyncSession = Depends(get_db)):
             first_name=first_name,
             last_name=last_name,
             title=title,
+            phone=phone,
             linkedin_headline=funding,  # Store funding_round in linkedin_headline for now
             insight=insight,
             custom_fields=row

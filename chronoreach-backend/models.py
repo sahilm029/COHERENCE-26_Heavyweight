@@ -10,6 +10,7 @@ class Lead(Base):
     first_name = Column(String, nullable=True)
     last_name = Column(String, nullable=True)
     email = Column(String, unique=True, index=True, nullable=False)
+    phone = Column(String, nullable=True)
     company = Column(String, nullable=True)
     title = Column(String, nullable=True)
     linkedin_headline = Column(String, nullable=True)
@@ -95,4 +96,17 @@ class ClawbotPending(Base):
     draft_message = Column(Text, nullable=True)
     user_phone = Column(String, nullable=True)
     status = Column(String, default="pending")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class BlandCall(Base):
+    __tablename__ = "bland_calls"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    call_id = Column(String, unique=True, index=True, nullable=False)  # Bland's call_id
+    campaign_id = Column(Integer, ForeignKey("campaigns.id"), nullable=True)
+    lead_id = Column(Integer, ForeignKey("leads.id"), nullable=True)
+    to_phone = Column(String, nullable=False)
+    status = Column(String, default="initiated")  # initiated / completed / failed
+    transcript = Column(Text, nullable=True)
+    meeting_booked = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
